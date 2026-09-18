@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -24,8 +24,17 @@ export function EntryForm() {
   const { people, entries } = useLedger()
   const queryClient = useQueryClient()
   const [nameFocus, setNameFocus] = useState(false)
+  const [directAmount, setDirectAmount] = useState(false)
+  const amountInputRef = useRef<HTMLInputElement>(null)
 
   const editing = entries.find((e) => e.id === editingId)
+
+  function focusAmountInput() {
+    window.requestAnimationFrame(() => {
+      amountInputRef.current?.focus()
+      amountInputRef.current?.select()
+    })
+  }
 
   const form = useForm<EntryFormValues>({
     resolver: zodResolver(entrySchema),
@@ -52,6 +61,7 @@ export function EntryForm() {
         date: editing.date,
         memo: editing.memo,
       })
+      setDirectAmount(!AMOUNT_CHIPS.includes(editing.amount))
     } else {
       form.reset({
         direction: 'given',
@@ -62,6 +72,7 @@ export function EntryForm() {
         date: todayIso(),
         memo: '',
       })
+      setDirectAmount(false)
     }
   }, [open, editing, form])
 
@@ -98,6 +109,7 @@ export function EntryForm() {
           date: todayIso(),
           memo: '',
         })
+        setDirectAmount(false)
       }
     },
   })
@@ -165,11 +177,22 @@ export function EntryForm() {
               name="amount"
               render={({ field }) => (
                 <input
+                  ref={(el) => {
+                    field.ref(el)
+                    amountInputRef.current = el
+                  }}
                   inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="off"
                   aria-label="금액"
-                  className="tabular w-full border-0 bg-transparent text-center text-[40px] font-semibold leading-none tracking-tight text-ink outline-none"
-                  value={field.value ? formatWon(field.value) : '0원'}
-                  onChange={(e) => field.onChange(parseDigits(e.target.value))}
+                  placeholder="0원"
+                  className="tabular w-full border-0 border-b border-line bg-transparent pb-2 text-center text-[40px] font-semibold leading-none tracking-tight text-ink outline-none placeholder:text-ink/30 focus:border-ink"
+                  value={field.value ? formatWon(field.value) : ''}
+                  onFocus={() => setDirectAmount(true)}
+                  onChange={(e) => {
+                    setDirectAmount(true)
+                    field.onChange(parseDigits(e.target.value))
+                  }}
                 />
               )}
             />
@@ -181,12 +204,23 @@ export function EntryForm() {
             <div className="mt-4">
               <ChipGroup
                 ariaLabel="빠른 금액"
-                value={form.watch('amount')}
-                onChange={(v) => form.setValue('amount', v, { shouldValidate: true })}
-                options={AMOUNT_CHIPS.map((n) => ({
-                  value: n,
-                  label: `${(n / 10_000).toLocaleString('ko-KR')}만`,
-                }))}
+                value={directAmount ? 'custom' : form.watch('amount')}
+                onChange={(v) => {
+                  if (v === 'custom') {
+                    setDirectAmount(true)
+                    focusAmountInput()
+                    return
+                  }
+                  setDirectAmount(false)
+                  form.setValue('amount', v, { shouldValidate: true })
+                }}
+                options={[
+                  ...AMOUNT_CHIPS.map((n) => ({
+                    value: n,
+                    label: `${(n / 10_000).toLocaleString('ko-KR')}만`,
+                  })),
+                  { value: 'custom', label: '직접입력' },
+                ]}
               />
             </div>
           </div>
