@@ -7,7 +7,8 @@ import { useAuth } from '@/features/auth/auth-context'
 import { entrySchema, type EntryFormValues } from '@/features/entries/schema'
 import { ledgerKey, useLedger } from '@/features/ledger/use-ledger'
 import { repo } from '@/shared/lib/data'
-import { formatWon, normalizeName, parseDigits, todayIso } from '@/shared/lib/format'
+import { cn } from '@/shared/lib/cn'
+import { normalizeName, parseDigits, todayIso } from '@/shared/lib/format'
 import { AMOUNT_CHIPS, EVENT_LABELS, RELATION_LABELS } from '@/shared/lib/labels'
 import { useUiStore } from '@/shared/stores/ui-store'
 import { Button } from '@/shared/ui/Button'
@@ -172,29 +173,46 @@ export function EntryForm() {
           />
 
           <div className="mt-6">
+            <p className="mb-1.5 text-center text-[13px] text-muted">금액</p>
             <Controller
               control={form.control}
               name="amount"
-              render={({ field }) => (
-                <input
-                  ref={(el) => {
-                    field.ref(el)
-                    amountInputRef.current = el
-                  }}
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  autoComplete="off"
-                  aria-label="금액"
-                  placeholder="0원"
-                  className="tabular w-full border-0 border-b border-line bg-transparent pb-2 text-center text-[40px] font-semibold leading-none tracking-tight text-ink outline-none placeholder:text-ink/30 focus:border-ink"
-                  value={field.value ? formatWon(field.value) : ''}
-                  onFocus={() => setDirectAmount(true)}
-                  onChange={(e) => {
-                    setDirectAmount(true)
-                    field.onChange(parseDigits(e.target.value))
-                  }}
-                />
-              )}
+              render={({ field }) => {
+                const display = field.value ? field.value.toLocaleString('ko-KR') : ''
+                return (
+                  <div
+                    className="flex cursor-text items-baseline justify-center border-b border-line pb-2 focus-within:border-ink"
+                    onClick={() => amountInputRef.current?.focus()}
+                  >
+                    <input
+                      ref={(el) => {
+                        field.ref(el)
+                        amountInputRef.current = el
+                      }}
+                      inputMode="numeric"
+                      autoComplete="off"
+                      aria-label="금액"
+                      placeholder="0"
+                      className="tabular min-w-[1ch] bg-transparent text-right text-[40px] font-semibold leading-none tracking-tight text-ink outline-none placeholder:text-ink/30"
+                      style={{ width: `${Math.max(display.length, 1)}ch` }}
+                      value={display}
+                      onFocus={() => setDirectAmount(true)}
+                      onChange={(e) => {
+                        setDirectAmount(true)
+                        field.onChange(parseDigits(e.target.value))
+                      }}
+                    />
+                    <span
+                      className={cn(
+                        'ml-0.5 shrink-0 text-[20px] font-medium leading-none',
+                        field.value ? 'text-ink' : 'text-ink/30',
+                      )}
+                    >
+                      원
+                    </span>
+                  </div>
+                )
+              }}
             />
             {form.formState.errors.amount ? (
               <p className="mt-2 text-center text-[13px] text-red-700">
